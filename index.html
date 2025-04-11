@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Real-Time NIDS</title>
+    <style>
+        body { font-family: Arial; padding: 40px; background: #f0f0f0; text-align: center; }
+        button { padding: 10px 20px; font-size: 18px; }
+        #results { margin-top: 30px; font-size: 20px; }
+    </style>
+</head>
+<body>
+    <h1>Real-Time Intrusion Detection</h1>
+    <button onclick="startMonitoring()">Capture Real Traffic</button>
+    <div id="status"></div>
+    <div id="results"></div>
+
+<script>
+    function fetchResults() {
+    fetch('/get-predictions')
+        .then(response => response.json())
+        .then(data => {
+            if (data.predictions) {
+                const resultText = data.predictions.some(p => p.includes('anomaly'))
+                    ? "Anomaly Detected!"
+                    : "Traffic Appears Normal.";
+                document.getElementById("results").innerText = resultText;
+                document.getElementById("status").innerText = "Prediction Complete";
+            } else if (data.status === 'processing') {
+                document.getElementById("status").innerText = "Still processing... checking again soon.";
+                setTimeout(fetchResults, 3000);  // Poll every 3 seconds
+            } else if (data.error) {
+                document.getElementById("status").innerText = "Error: " + data.error;
+            } else {
+                document.getElementById("status").innerText = data.message || "Waiting to start.";
+            }
+        });
+}
+
+    function startMonitoring() {
+        document.getElementById("status").innerText = "Monitoring started... Please wait.";
+        document.getElementById("results").innerText = "";
+
+        fetch('/start-monitoring', { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+                console.log(data.status);
+                pollForResults();  // Start polling
+            });
+    }
+
+    function pollForResults() {
+        fetch('/get-predictions')
+            .then(response => response.json())
+            .then(data => {
+                if (data.predictions) {
+                    const resultText = data.predictions.includes('anomaly')
+                        ? "Anomaly Detected!"
+                        : "Traffic Appears Normal.";
+                    document.getElementById("results").innerText = resultText;
+                    document.getElementById("status").innerText = "Prediction Complete";
+                } else {
+                    document.getElementById("status").innerText = "Still processing...";
+                    setTimeout(pollForResults, 3000); // Try again in 3 seconds
+                }
+            })
+            .catch(err => {
+                document.getElementById("status").innerText = "Error checking predictions.";
+                console.error(err);
+            });
+    }
+</script>
