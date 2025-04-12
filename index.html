@@ -100,7 +100,7 @@
                         document.getElementById("results").innerText = resultText;
                         document.getElementById("status").innerText = "Prediction Complete";
                     } else if (data.status === 'processing') {
-                        document.getElementById("status").innerText = "⏳ Still processing... checking again soon.";
+                        document.getElementById("status").innerText = "Still processing... checking again soon.";
                         setTimeout(fetchResults, 3000);
                     } else if (data.error) {
                         document.getElementById("status").innerText = "Error: " + data.error;
@@ -122,7 +122,7 @@
             const formData = new FormData();
             formData.append("file", file);
 
-            document.getElementById("status").innerText = "⏳ Uploading and processing file...";
+            document.getElementById("status").innerText = "Uploading and processing file...";
             document.getElementById("results").innerText = "";
 
             fetch('/manual-check', {
