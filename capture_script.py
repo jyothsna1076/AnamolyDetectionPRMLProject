@@ -1,11 +1,11 @@
 import csv
 import os
-from scapy.all import sniff, IP, TCP, UDP
+from scapy.all import sniff, IP, TCP, UDP, get_if_list
 from collections import defaultdict, deque
 import time
 import socket
 
-csv_file_path = "/Users/pradeepikanori/PRML_project/real_time_nids_features.csv"
+csv_file_path = "real_time_nids_features.csv"
 csv_header = [
     "duration", "protocol_type", "service", "flag", "src_bytes", "dst_bytes", "land",
     "wrong_fragment", "urgent", "hot", "num_failed_logins", "logged_in", "num_compromised",
@@ -217,8 +217,18 @@ def extract_features(pkt):
 
     print("Captured:", features[:5], "...")  # Print a summary
 
-def start_sniffing(iface="en0"):
+def start_sniffing():
+    interfaces = get_if_list()
     print("[*] Capturing packets & writing to:", csv_file_path)
+    for iface in interfaces:
+        print(f"[*] Testing interface: {iface}")
+        packets = sniff(iface=iface, count=1, timeout=3, store=1)
+        if packets:
+            print(f"[+] Using interface: {iface}")
+            break
+    else:
+        print("[-] No active interface found.")
+        return
     sniff(iface=iface, prn=extract_features, store=0, timeout=20)
 
 if __name__ == "__main__":
