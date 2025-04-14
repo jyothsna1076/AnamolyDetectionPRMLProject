@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 import joblib
-from sklearn.preprocessing import PolynomialFeatures
+from sklearn.preprocessing import PolynomialFeatures, LabelEncoder
 import SVM_best_model
 import LogisticRegression
 from LogisticRegression import My_Logistic_Regression
@@ -149,8 +149,71 @@ def preprocess_and_predict_NV(output_csv='predictions.csv'):
     print("Anomaly:", anomaly)
 
     return normal, anomaly
+def predict_knn(output_csv='predictions.csv'):
+    real_data = pd.read_csv("real_time_nids_features.csv")
+
+    cat_cols = ['protocol_type', 'service', 'flag']
+
+    def load_or_fit_encoder(file_name, column_name):
+        if os.path.exists(file_name):
+            return joblib.load(file_name)
+        else:
+            print(f"[Warning] '{file_name}' not found. Creating and fitting a new LabelEncoder on column '{column_name}'")
+            le = LabelEncoder()
+            real_data[column_name] = le.fit_transform(real_data[column_name])
+            joblib.dump(le, file_name)
+            return le
+
+    def safe_label_transform(le, series):
+        valid_labels = set(le.classes_)
+        return series.apply(lambda x: le.transform([x])[0] if x in valid_labels else -1)
+
+    # Encode and mark invalid rows
+    for col in cat_cols:
+        le = load_or_fit_encoder(f"{col}_le.pkl", col)
+        real_data[col] = safe_label_transform(le, real_data[col])
+
+    # Keep mask of valid rows (to also filter predictions.csv if needed)
+    valid_mask = (real_data[cat_cols] != -1).all(axis=1)
+    real_data = real_data[valid_mask]
+
+    scaler = joblib.load("models/Knn_model/scaler.pkl")
+    selected_indices = joblib.load("models/Knn_model/selected_feature_indices.pkl")
+
+    real_data_scaled = scaler.transform(real_data.values)
+    real_data_selected = real_data_scaled[:, selected_indices]
+
+    knn_model = joblib.load("models/Knn_model/knn_model.pkl")
+    predictions = knn_model.predict(real_data_selected)
+
+    # Append predictions to output_csv if lengths match
+    if os.path.exists(output_csv):
+        combined = pd.read_csv(output_csv)
+
+        # Apply the same mask to combined so rows match
+        combined = combined[valid_mask.values]
+
+        if len(combined) == len(predictions):
+            combined["knn"] = predictions
+            combined.to_csv(output_csv, index=False)
+        else:
+            print(f"❌ Length mismatch after filtering: combined={len(combined)}, predictions={len(predictions)}")
+    else:
+        pd.DataFrame(predictions, columns=["knn"]).to_csv(output_csv, index=False)
+
+    label_map = {0: 'Normal', 1: 'Anomaly'}
+    predicted_labels = [label_map[pred] for pred in predictions]
+
+    print("\nPredictions:")
+    print(predicted_labels)
+
+    unique_labels, counts = np.unique(predicted_labels, return_counts=True)
+    print("\nPrediction Summary:")
+    for label, count in zip(unique_labels, counts):
+        print(f"{label}: {count}")
 
 if __name__ == "__main__":
     check_and_predict_SVM()
     check_and_predict_LR()
     preprocess_and_predict_NV()
+    predict_knn()
