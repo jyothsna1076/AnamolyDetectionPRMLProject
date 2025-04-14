@@ -232,4 +232,4 @@ def start_sniffing():
     sniff(iface=iface, prn=extract_features, store=0, timeout=20)
 
 if __name__ == "__main__":
-    start_sniffing("en0")  # Or "wlan0" or your actual Colab interface
+    start_sniffing()  # Or "wlan0" or your actual Colab interface

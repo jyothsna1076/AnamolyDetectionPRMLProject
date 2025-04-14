@@ -7,6 +7,10 @@ import LogisticRegression
 from LogisticRegression import My_Logistic_Regression
 from my_models import MyGaussianNaiveBayes
 import os
+from randomforestprml import MyRandomForest
+from randomforestprml import MyRandomForest
+from sklearn.preprocessing import LabelEncoder
+from collections import Counter
 encoders = joblib.load('models/SVM_models/label_encoders.pkl')
 target_encoder = joblib.load('models/SVM_models/target_encoder.pkl')
 scaler = joblib.load('models/SVM_models/scaler.pkl')
@@ -108,9 +112,6 @@ def check_and_predict_LR(output_csv='predictions.csv'):
         print("❌ Error during prediction:", e)
         raise
 
-
-
-
 def preprocess_and_predict_NV(output_csv='predictions.csv'):
     df = pd.read_csv('real_time_nids_features.csv')
     
@@ -132,18 +133,19 @@ def preprocess_and_predict_NV(output_csv='predictions.csv'):
 
     # Predict
     predictions = nb_model.predict(df_scaled)
+    pred_labels = ["normal" if p == 0 else "anomaly" for p in predictions]
 
-    # Save to CSV
+    # Append to existing predictions.csv
     if os.path.exists(output_csv):
         combined = pd.read_csv(output_csv)
-        combined["nv"] = predictions
+        combined["nv"] = pred_labels
         combined.to_csv(output_csv, index=False)
     else:
-        pd.DataFrame(predictions, columns=["nv"]).to_csv(output_csv, index=False)
+        pd.DataFrame(pred_labels, columns=["nv"]).to_csv(output_csv, index=False)
 
     # Summary
-    normal = np.sum(predictions == 0)
-    anomaly = np.sum(predictions == 1)
+    normal = pred_labels.count("normal")
+    anomaly = pred_labels.count("anomaly")
     print("✅ Predictions complete from Naive Bayes")
     print("Normal :", normal)
     print("Anomaly:", anomaly)
@@ -186,34 +188,65 @@ def predict_knn(output_csv='predictions.csv'):
     knn_model = joblib.load("models/Knn_model/knn_model.pkl")
     predictions = knn_model.predict(real_data_selected)
 
+    # ✅ Convert numeric predictions to labels
+    label_map = {0: 'normal', 1: 'anomaly'}
+    predicted_labels = [label_map[pred] for pred in predictions]
+
     # Append predictions to output_csv if lengths match
     if os.path.exists(output_csv):
         combined = pd.read_csv(output_csv)
-
-        # Apply the same mask to combined so rows match
         combined = combined[valid_mask.values]
 
-        if len(combined) == len(predictions):
-            combined["knn"] = predictions
+        if len(combined) == len(predicted_labels):
+            combined["knn"] = predicted_labels
             combined.to_csv(output_csv, index=False)
         else:
-            print(f"❌ Length mismatch after filtering: combined={len(combined)}, predictions={len(predictions)}")
+            print(f"❌ Length mismatch after filtering: combined={len(combined)}, predictions={len(predicted_labels)}")
     else:
-        pd.DataFrame(predictions, columns=["knn"]).to_csv(output_csv, index=False)
+        pd.DataFrame(predicted_labels, columns=["knn"]).to_csv(output_csv, index=False)
 
-    label_map = {0: 'Normal', 1: 'Anomaly'}
-    predicted_labels = [label_map[pred] for pred in predictions]
-
-    print("\nPredictions:")
-    print(predicted_labels)
-
+    # Summary
     unique_labels, counts = np.unique(predicted_labels, return_counts=True)
-    print("\nPrediction Summary:")
+    print("\nPrediction Summary from KNN:")
     for label, count in zip(unique_labels, counts):
         print(f"{label}: {count}")
+
+def check_and_predict_RF(output_csv='predictions.csv'):
+    model = joblib.load('models/RF_models/random_forest.pkl')  
+
+    # Load unlabeled data
+    unlabeled_data = pd.read_csv("real_time_nids_features.csv")
+
+    for col in unlabeled_data.columns:
+        if unlabeled_data[col].dtype == 'object':
+            le = LabelEncoder()
+            unlabeled_data[col] = le.fit_transform(unlabeled_data[col].astype(str))
+
+    preds = model.predict(unlabeled_data)
+    pred_labels = ["normal" if p == 1 else "anomaly" for p in preds]
+
+    # Save predictions to CSV
+    if os.path.exists(output_csv):
+        combined = pd.read_csv(output_csv)
+        combined["rf"] = pred_labels
+        combined.to_csv(output_csv, index=False)
+    else:
+        pd.DataFrame(pred_labels, columns=["rf"]).to_csv(output_csv, index=False)
+
+    prediction_counts = Counter(pred_labels)
+    print("✅ Predictions from Random Forest")
+    for label, count in prediction_counts.items():
+        print(f"{label}: {count}")
+
+    if "anomaly" in prediction_counts and prediction_counts["anomaly"] > 150:
+        print("Final Say: 🚨 Anomaly Detected")
+    else:
+        print("Final Say: ✅ Normal Behavior")
+
 
 if __name__ == "__main__":
     check_and_predict_SVM()
     check_and_predict_LR()
     preprocess_and_predict_NV()
+    check_and_predict_RF()
     predict_knn()
