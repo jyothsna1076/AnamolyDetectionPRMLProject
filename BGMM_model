@@ -1,0 +1,63 @@
+import pandas as pd
+import numpy as np
+import warnings
+from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.mixture import BayesianGaussianMixture
+import joblib
+
+warnings.filterwarnings("ignore")
+
+#Load and preprocess entire training data
+train_df = pd.read_csv("Train_data.csv")
+
+le_protocol = LabelEncoder()
+train_df['protocol_type'] = le_protocol.fit_transform(train_df['protocol_type'])
+joblib.dump(le_protocol, "=le_protocol.pkl")  # Save encoder for protocol_type
+# print("le_protocol.pkl saved")
+
+le_service = LabelEncoder()
+train_df['service'] = le_service.fit_transform(train_df['service'])
+joblib.dump(le_service, "le_service.pkl")  # Save encoder for service
+# print("le_service.pkl saved")
+
+le_flag = LabelEncoder()
+train_df['flag'] = le_flag.fit_transform(train_df['flag'])
+joblib.dump(le_flag, "le_flag.pkl")  # Save encoder for flag
+# print("le_flag.pkl saved")
+
+# Encode categorical features
+for col in ['protocol_type', 'service', 'flag']:
+    train_df[col] = LabelEncoder().fit_transform(train_df[col])
+
+#Filter only the NORMAL samples
+normal_df = train_df[train_df['class'] == 'normal']  
+
+X_train = normal_df.drop(columns=['class'])
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+
+#Train Bayesian Gaussian Mixture
+bgmm = BayesianGaussianMixture(n_components=10, covariance_type='full', random_state=42)
+bgmm.fit(X_train_scaled)
+
+#Compute anomaly threshold using NORMAL data , not attacked ones
+scores = -bgmm.score_samples(X_train_scaled)
+threshold = np.percentile(scores, 95)
+
+#Save model, scaler, and threshold in .pkl 
+joblib.dump(bgmm, "bgmm_model.pkl")
+joblib.dump(scaler, "scaler.pkl")
+joblib.dump(threshold, "threshold.pkl")
+
+#Save selected features 
+joblib.dump(X_train.columns.tolist(), "selected_features.pkl")
+
+# model = bgmm
+model = joblib.load("bgmm_model.pkl")
+
+
+def predict(features):
+    return model.predict([features])[0]
+
+print(f"[INFO] Model trained and saved successfully.")
+print(f"[INFO] Anomaly threshold set at 95th percentile: {threshold:.4f}")
