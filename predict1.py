@@ -245,12 +245,12 @@ def check_and_predict_RF(output_csv='predictions.csv'):
 
 def predict_with_bgmm(output_csv='predictions.csv'):
     # Load trained model and preprocessing assets
-    bgmm = joblib.load("models/BGMM_models/bgmm_model.pkl")
-    scaler = joblib.load("models/BGMM_models/scaler.pkl")
-    le_protocol = joblib.load("models/BGMM_models/le_protocol.pkl")
-    le_service = joblib.load("models/BGMM_models/le_service.pkl")
-    le_flag = joblib.load("models/BGMM_models/le_flag.pkl")
-    feature_order = joblib.load("models/BGMM_models/feature_order.pkl")
+    bgmm = joblib.load("models/BGMM_model/bgmm_model.pkl")
+    scaler = joblib.load("models/BGMM_model/scaler.pkl")
+    le_protocol = joblib.load("models/GMM_model/le_protocol.pkl")
+    le_service = joblib.load("models/GMM_model/le_service.pkl")
+    le_flag = joblib.load("models/GMM_model/le_flag.pkl")
+    feature_order = joblib.load("models/GMM_model/feature_order.pkl")
 
      try:
         df = pd.read_csv("real_time_nids_features.csv")
