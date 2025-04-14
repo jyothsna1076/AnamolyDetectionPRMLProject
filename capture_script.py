@@ -4,6 +4,7 @@ from scapy.all import sniff, IP, TCP, UDP, get_if_list
 from collections import defaultdict, deque
 import time
 import socket
+from scapy.error import Scapy_Exception
 
 csv_file_path = "real_time_nids_features.csv"
 csv_header = [
@@ -220,16 +221,22 @@ def extract_features(pkt):
 def start_sniffing():
     interfaces = get_if_list()
     print("[*] Capturing packets & writing to:", csv_file_path)
+    
     for iface in interfaces:
-        print(f"[*] Testing interface: {iface}")
-        packets = sniff(iface=iface, count=1, timeout=3, store=1)
-        if packets:
-            print(f"[+] Using interface: {iface}")
-            break
+        try:
+            print(f"[*] Testing interface: {iface}")
+            packets = sniff(iface=iface, count=1, timeout=3, store=1)
+            if packets:
+                print(f"[+] Using interface: {iface}")
+                # Start actual sniffing now
+                sniff(iface=iface, prn=extract_features, store=0, timeout=20)
+                break
+        except Scapy_Exception as e:
+            print(f"[!] Skipping interface {iface}: {e}")
+        except Exception as e:
+            print(f"[!] Unexpected error on {iface}: {e}")
     else:
-        print("[-] No active interface found.")
-        return
-    sniff(iface=iface, prn=extract_features, store=0, timeout=20)
+        print("[-] No usable interface found.")
 
 if __name__ == "__main__":
     start_sniffing()  # Or "wlan0" or your actual Colab interface

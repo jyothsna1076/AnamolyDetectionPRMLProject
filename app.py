@@ -45,34 +45,64 @@ def handle_capture_and_predict():
 def index():
     return render_template('index.html')
 
+latest_output = ""
+
 @app.route('/start-monitoring', methods=['POST'])
 def start_monitoring():
-    if prediction_status['status'] == 'processing':
-        return jsonify({'status': 'Already processing...'})
+    global latest_output
+    try:
+        if prediction_status['status'] == 'processing':
+            return jsonify({'status': 'Already processing...'})
 
-    prediction_status['status'] = 'processing'  # Reset here
-    prediction_status['predictions'] = None     # Clear old predictions
+        # Reset prediction state
+        prediction_status['status'] = 'processing'
+        prediction_status['predictions'] = None
 
-    threading.Thread(target=handle_capture_and_predict).start()
-    return jsonify({'status': 'Monitoring started...'})
+        # Start the background capture + predict
+        thread = threading.Thread(target=handle_capture_and_predict)
+        thread.start()
 
+        return jsonify({'status': 'Monitoring started...'})
+
+    except subprocess.CalledProcessError as e:
+        return jsonify({'status': 'error', 'error': e.stderr}), 500
 
 @app.route('/get-predictions', methods=['GET'])
 def get_predictions():
-    status = prediction_status['status']
-    
-    if status == 'done':
-        result = prediction_status['predictions']
-        # Reset after serving
-        prediction_status['status'] = 'idle'
-        prediction_status['predictions'] = None
-        return jsonify({'predictions': result})
-    elif status == 'processing':
+    if prediction_status['status'] == 'done':
+        if os.path.exists("prediction_summary.txt"):
+            with open("prediction_summary.txt", "r") as f:
+                summary_text = f.read()
+
+            # Optional: reset status so old results are cleared next time
+            prediction_status['status'] = 'idle'
+            prediction_status['predictions'] = None
+
+            return jsonify({'status': 'done', 'output': summary_text})
+        else:
+            return jsonify({'status': 'done', 'output': 'No summary file found.'})
+
+    elif prediction_status['status'] == 'processing':
         return jsonify({'status': 'processing'})
-    elif status == 'error':
-        return jsonify({'error': prediction_status['predictions']})
     else:
-        return jsonify({'status': 'idle', 'message': 'Click capture to start monitoring.'})
+        return jsonify({'status': 'idle', 'output': 'Waiting to start prediction...'})
+
+# @app.route('/get-predictions', methods=['GET'])
+# def get_predictions():
+#     status = prediction_status['status']
+    
+#     if status == 'done':
+#         result = prediction_status['predictions']
+#         # Reset after serving
+#         prediction_status['status'] = 'idle'
+#         prediction_status['predictions'] = None
+#         return jsonify({'predictions': result})
+#     elif status == 'processing':
+#         return jsonify({'status': 'processing'})
+#     elif status == 'error':
+#         return jsonify({'error': prediction_status['predictions']})
+#     else:
+#         return jsonify({'status': 'idle', 'message': 'Click capture to start monitoring.'})
 
     
 @app.route('/manual-check', methods=['POST'])
@@ -97,7 +127,17 @@ def manual_check():
             lines = f.readlines()[1:]
             predictions = [line.strip() for line in lines]
 
-        return jsonify({'predictions': predictions})
+        summary_text = ""
+        summary_path = os.path.join('prediction_summary.txt')
+        if os.path.exists(summary_path):
+            with open(summary_path, "r") as f:
+                summary_text = f.read()
+
+        # ⬇️ Include summary in response
+        return jsonify({
+            'predictions': predictions,
+            'summary': summary_text
+        })
 
     except subprocess.CalledProcessError as e:
         print(f"[✗] Prediction error: {e}")

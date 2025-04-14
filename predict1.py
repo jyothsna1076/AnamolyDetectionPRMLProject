@@ -11,6 +11,7 @@ from randomforestprml import MyRandomForest
 from randomforestprml import MyRandomForest
 from sklearn.preprocessing import LabelEncoder
 from collections import Counter
+import argparse
 encoders = joblib.load('models/SVM_models/label_encoders.pkl')
 target_encoder = joblib.load('models/SVM_models/target_encoder.pkl')
 scaler = joblib.load('models/SVM_models/scaler.pkl')
@@ -27,36 +28,64 @@ def safe_label_transform(le, col_values):
             le.classes_ = np.append(le.classes_, "unknown")
     return le.transform(col_values)
 
-def check_and_predict_SVM(test_csv='real_time_nids_features.csv', output_csv='predictions.csv'):
-    test_data = pd.read_csv(test_csv)
-    test_data.drop(['num_outbound_cmds'], axis=1, errors='ignore', inplace=True)
+def check_and_predict_SVM(output_csv='predictions.csv'):
+    try:
+        parser = argparse.ArgumentParser()
+        parser.add_argument('--input', help='Path to input CSV file')
+        args = parser.parse_args()
 
-    for col in encoders:
-        if col in test_data.columns:
-            test_data[col] = safe_label_transform(encoders[col], test_data[col].astype(str))
+        input_file = args.input if args.input else 'real_time_nids_features.csv'
+        print(f"[*] Using input file: {input_file}")
 
-    for col in feature_order:
-        if col not in test_data.columns:
-            test_data[col] = 0
-    test_data = test_data[feature_order]
+        # === Step 2: Load test data ===
+        x_test = pd.read_csv(input_file)
+        x_test.drop(['num_outbound_cmds'], axis=1, errors='ignore', inplace=True)
 
-    X_scaled = scaler.transform(test_data)
-    predictions = model.predict(X_scaled)
-    predicted_labels = target_encoder.inverse_transform(predictions.astype(int))
+        # === Step 3: Encode categorical columns ===
+        cat_cols = ['protocol_type', 'service', 'flag']
+        for col in cat_cols:
+            le = encoders[col]
+            known_classes = set(le.classes_)
+            x_test[col] = x_test[col].astype(str).apply(lambda val: val if val in known_classes else 'unknown')
+            if 'unknown' not in le.classes_:
+                le.classes_ = np.append(le.classes_, 'unknown')
+            x_test[col] = le.transform(x_test[col])
 
-    # Save SVM predictions
-    pd.DataFrame(predicted_labels, columns=["svm"]).to_csv(output_csv, index=False)
+        # === Step 4: Align column order ===
+        x_test = x_test[feature_order]
 
-    unique, counts = np.unique(predicted_labels, return_counts=True)
-    print("=== Prediction Summary from SVM===")
-    for label, count in zip(unique, counts):
-        print(f"{label}: {count}")
+        # === Step 5: Scale test features ===
+        x_test_scaled = scaler.transform(x_test)
 
-    if 'anomaly' in predicted_labels or np.sum(predictions == 0) > 150:
-        print(">>> Anomaly Detected!")
-    else:
-        print(">>> Traffic appears normal.")
+        # === Step 6: Predict using custom SVM ===
+        predictions = model.predict(x_test_scaled)
+        pred_labels = ["normal" if p == 1 else "anomaly" for p in predictions]
 
+        # === Step 7: Save predictions ===
+        df_out = pd.DataFrame(pred_labels, columns=["svm"])
+        df_out.to_csv(output_csv, index=False)
+
+        normal_count = pred_labels.count("normal")
+        anomaly_count = pred_labels.count("anomaly")
+
+        summary = []
+        summary.append("    === SVM Model Predicts ===")
+
+        print("Predictions complete from SVM")
+        print("Normal : ", normal_count)
+        print("Anomaly: ", anomaly_count)
+        summary.append(f"Normal : {normal_count}")
+        summary.append(f"Anomaly: {anomaly_count}")
+
+        for line in summary:
+            print(line)
+        # Save to file for frontend
+        with open("prediction_summary.txt", mode='w', newline='') as f:
+            for line in summary:
+                f.write(line + "\n")
+
+    except Exception as e:
+        return [f"Error: {str(e)}"]
 
 def check_and_predict_LR(output_csv='predictions.csv'):
     clf = joblib.load("models/LR_models/classifier.pkl")
@@ -66,7 +95,14 @@ def check_and_predict_LR(output_csv='predictions.csv'):
     scaler = joblib.load("models/LR_models/scaler.pkl")
 
     try:
-        df = pd.read_csv("real_time_nids_features.csv")
+        parser = argparse.ArgumentParser()
+        parser.add_argument('--input', help='Path to input CSV file')
+        args = parser.parse_args()
+
+        input_file = args.input if args.input else 'real_time_nids_features.csv'
+        print(f"[*] Using input file: {input_file}")
+
+        df = pd.read_csv(input_file)
         print("✅ Data read")
 
         df["protocol_type"] = safe_label_transform(le_protocol, df["protocol_type"])
@@ -103,9 +139,21 @@ def check_and_predict_LR(output_csv='predictions.csv'):
         normal_count = pred_labels.count("normal")
         anomaly_count = pred_labels.count("anomaly")
 
+        summary = []
+        summary.append("    === Logistic Regression Model Predicts ===")
+
         print("✅ Predictions complete from Logistic Regression")
         print("Normal : ", normal_count)
         print("Anomaly: ", anomaly_count)
+        summary.append(f"Normal : {normal_count}")
+        summary.append(f"Anomaly: {anomaly_count}")
+
+        for line in summary:
+            print(line)
+        # Save to file for frontend
+        with open("prediction_summary.txt", mode='a', newline='') as f:
+            for line in summary:
+                f.write(line + "\n")
         return df, normal_count, anomaly_count
 
     except Exception as e:
@@ -113,7 +161,14 @@ def check_and_predict_LR(output_csv='predictions.csv'):
         raise
 
 def preprocess_and_predict_NV(output_csv='predictions.csv'):
-    df = pd.read_csv('real_time_nids_features.csv')
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--input', help='Path to input CSV file')
+    args = parser.parse_args()
+
+    input_file = args.input if args.input else 'real_time_nids_features.csv'
+    print(f"[*] Using input file: {input_file}")
+
+    df = pd.read_csv(input_file)
     
     nb_model = joblib.load('models/Navie_bayes_Model/naive_bayes_model.pkl')
     scaler = joblib.load('models/Navie_bayes_Model/scaler.pkl')
@@ -149,10 +204,28 @@ def preprocess_and_predict_NV(output_csv='predictions.csv'):
     print("✅ Predictions complete from Naive Bayes")
     print("Normal :", normal)
     print("Anomaly:", anomaly)
+    summary = []
+    summary.append("    === Naive Bayes Model Predicts ===")
+    summary.append(f"Normal : {normal}")
+    summary.append(f"Anomaly: {anomaly}")
+
+    for line in summary:
+            print(line)
+        # Save to file for frontend
+    with open("prediction_summary.txt", mode='a', newline='') as f:
+            for line in summary:
+                f.write(line + "\n")
 
     return normal, anomaly
 def predict_knn(output_csv='predictions.csv'):
-    real_data = pd.read_csv("real_time_nids_features.csv")
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--input', help='Path to input CSV file')
+    args = parser.parse_args()
+
+    input_file = args.input if args.input else 'real_time_nids_features.csv'
+    print(f"[*] Using input file: {input_file}")
+
+    real_data = pd.read_csv(input_file)
 
     cat_cols = ['protocol_type', 'service', 'flag']
 
@@ -207,15 +280,39 @@ def predict_knn(output_csv='predictions.csv'):
 
     # Summary
     unique_labels, counts = np.unique(predicted_labels, return_counts=True)
+    print("DEBUG >> unique_labels:", type(unique_labels), unique_labels)
+    print("DEBUG >> counts:", type(counts), counts)
     print("\nPrediction Summary from KNN:")
+    sum = 0
     for label, count in zip(unique_labels, counts):
+        sum += count
+        l = count
         print(f"{label}: {count}")
+
+    summary = []
+    summary.append("    === kNN Model Predicts ===")
+    summary.append(f"Normal : {l}")
+    summary.append(f"Anomaly: {sum - l}")
+
+    for line in summary:
+            print(line)
+        # Save to file for frontend
+    with open("prediction_summary.txt", mode='a', newline='') as f:
+            for line in summary:
+                f.write(line + "\n")
 
 def check_and_predict_RF(output_csv='predictions.csv'):
     model = joblib.load('models/RF_models/random_forest.pkl')  
 
     # Load unlabeled data
-    unlabeled_data = pd.read_csv("real_time_nids_features.csv")
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--input', help='Path to input CSV file')
+    args = parser.parse_args()
+
+    input_file = args.input if args.input else 'real_time_nids_features.csv'
+    print(f"[*] Using input file: {input_file}")
+
+    unlabeled_data = pd.read_csv(input_file)
 
     for col in unlabeled_data.columns:
         if unlabeled_data[col].dtype == 'object':
@@ -234,17 +331,26 @@ def check_and_predict_RF(output_csv='predictions.csv'):
         pd.DataFrame(pred_labels, columns=["rf"]).to_csv(output_csv, index=False)
 
     prediction_counts = Counter(pred_labels)
-    print("✅ Predictions from Random Forest")
+    print("Predictions from Random Forest")
     for label, count in prediction_counts.items():
         print(f"{label}: {count}")
+
+    summary = []
+    summary.append("    === Random Forest Model Predicts ===")
+    summary.append(f"Normal : {prediction_counts["normal"]}")
+    summary.append(f"Anomaly: {prediction_counts["anomaly"]}")
+
+    for line in summary:
+            print(line)
+        # Save to file for frontend
+    with open("prediction_summary.txt", mode='a', newline='') as f:
+            for line in summary:
+                f.write(line + "\n")
 
     if "anomaly" in prediction_counts and prediction_counts["anomaly"] > 150:
         print("Final Say: 🚨 Anomaly Detected")
     else:
         print("Final Say: ✅ Normal Behavior")
-
-
-
 def predict_with_bgmm(output_csv='predictions.csv'):
     # Load trained model and preprocessing tools
     bgmm = joblib.load("models/BGMM_model/bgmm_model.pkl")
@@ -264,7 +370,14 @@ def predict_with_bgmm(output_csv='predictions.csv'):
 
     try:
         # Load input features
-        df = pd.read_csv("real_time_nids_features.csv")
+        parser = argparse.ArgumentParser()
+        parser.add_argument('--input', help='Path to input CSV file')
+        args = parser.parse_args()
+
+        input_file = args.input if args.input else 'real_time_nids_features.csv'
+        print(f"[*] Using input file: {input_file}")
+
+        df = pd.read_csv(input_file)
         # print(df.info())
         # Encode categorical features safely
         df["protocol_type"] = safe_label_transform(le_protocol, df["protocol_type"].astype(str))
@@ -298,12 +411,21 @@ def predict_with_bgmm(output_csv='predictions.csv'):
         print(f"Normal  : {labels.count('normal')}")
         print(f"Anomaly : {labels.count('anomaly')}")
 
+        summary = []
+        summary.append("    === Gaussian Mixture Model Predicts ===")
+        summary.append(f"Normal : {labels.count("normal")}")
+        summary.append(f"Anomaly: {labels.count("anomaly")}")
+
+        for line in summary:
+                print(line)
+            # Save to file for frontend
+        with open("prediction_summary.txt", mode='a', newline='') as f:
+                for line in summary:
+                    f.write(line + "\n")
+
     except Exception as err:
         print("Prediction failed due to error:", err)
         raise
-
-
-
 
 if __name__ == "__main__":
     check_and_predict_SVM()
@@ -312,5 +434,3 @@ if __name__ == "__main__":
     check_and_predict_RF()
     predict_knn()
     predict_with_bgmm()
-    
-    

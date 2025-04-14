@@ -9,7 +9,6 @@ Original file is located at
 
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
 from sklearn.preprocessing import LabelEncoder
 from sklearn.tree import DecisionTreeClassifier,plot_tree
 from sklearn.model_selection import train_test_split
