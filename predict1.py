@@ -243,6 +243,48 @@ def check_and_predict_RF(output_csv='predictions.csv'):
     else:
         print("Final Say: ✅ Normal Behavior")
 
+def predict_with_bgmm(output_csv='predictions.csv'):
+    # Load trained model and preprocessing assets
+    bgmm = joblib.load("models/BGMM_models/bgmm_model.pkl")
+    scaler = joblib.load("models/BGMM_models/scaler.pkl")
+    le_protocol = joblib.load("models/BGMM_models/le_protocol.pkl")
+    le_service = joblib.load("models/BGMM_models/le_service.pkl")
+    le_flag = joblib.load("models/BGMM_models/le_flag.pkl")
+    feature_order = joblib.load("models/BGMM_models/feature_order.pkl")
+
+     try:
+        df = pd.read_csv("real_time_nids_features.csv")
+
+        # Encode categorical features
+        df["protocol_type"] = safe_label_transform(le_protocol, df["protocol_type"].astype(str))
+        df["service"] = safe_label_transform(le_service, df["service"].astype(str))
+        df["flag"] = safe_label_transform(le_flag, df["flag"].astype(str))
+
+        # Prepare features
+        X = df[features]
+        X_scaled = scaler.transform(X)
+        # Predict using Bayesian GMM
+        cluster_preds = bgmm.predict(X_scaled)
+
+        # Determine labels (assuming cluster 0 = normal, 1 = anomaly — adjust if needed)
+        labels = ["normal" if p == 0 else "anomaly" for p in cluster_preds]
+
+        # Save or append to predictions.csv
+        if os.path.exists(output_csv):
+            pred_df = pd.read_csv(output_csv)
+            pred_df["bgmm"] = labels
+        else:
+            pred_df = pd.DataFrame({"bgmm": labels})
+        pred_df.to_csv(output_csv, index=False)
+
+        # Print results summary
+        print("BGMM Prediction Summary:")
+        print(f"Normal  : {labels.count('normal')}")
+        print(f"Anomaly : {labels.count('anomaly')}")
+
+    except Exception as err:
+        print("Prediction failed due to error:", err)
+        raise
 
 if __name__ == "__main__":
     check_and_predict_SVM()
