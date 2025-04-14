@@ -243,41 +243,57 @@ def check_and_predict_RF(output_csv='predictions.csv'):
     else:
         print("Final Say: ✅ Normal Behavior")
 
+
+
 def predict_with_bgmm(output_csv='predictions.csv'):
-    # Load trained model and preprocessing assets
+    # Load trained model and preprocessing tools
     bgmm = joblib.load("models/BGMM_model/bgmm_model.pkl")
     scaler = joblib.load("models/BGMM_model/scaler.pkl")
-    le_protocol = joblib.load("models/GMM_model/le_protocol.pkl")
-    le_service = joblib.load("models/GMM_model/le_service.pkl")
-    le_flag = joblib.load("models/GMM_model/le_flag.pkl")
-    feature_order = joblib.load("models/GMM_model/feature_order.pkl")
+    threshold = joblib.load("models/BGMM_model/threshold.pkl")
+    le_protocol = joblib.load("models/BGMM_model/le_protocol_type.pkl")
+    le_service = joblib.load("models/BGMM_model/le_service.pkl")
+    le_flag = joblib.load("models/BGMM_model/le_flag.pkl")
+    feature_order = joblib.load("models/BGMM_model/feature_order.pkl")
 
-     try:
+    def safe_label_transform(label_encoder, values):
+        known_classes = set(label_encoder.classes_)
+        return np.array([
+            label_encoder.transform([val])[0] if val in known_classes else -1
+            for val in values
+        ])
+
+    try:
+        # Load input features
         df = pd.read_csv("real_time_nids_features.csv")
-
-        # Encode categorical features
+        # print(df.info())
+        # Encode categorical features safely
         df["protocol_type"] = safe_label_transform(le_protocol, df["protocol_type"].astype(str))
         df["service"] = safe_label_transform(le_service, df["service"].astype(str))
         df["flag"] = safe_label_transform(le_flag, df["flag"].astype(str))
 
-        # Prepare features
-        X = df[features]
+        # Align feature order
+        X = df[feature_order]
         X_scaled = scaler.transform(X)
-        # Predict using Bayesian GMM
-        cluster_preds = bgmm.predict(X_scaled)
+        # print(len(X_scaled))
+        # Get anomaly scores and predict
+        scores = -bgmm.score_samples(X_scaled)
+        predictions = (scores > threshold).astype(int)
+        print(len(predictions))
+        labels = ["normal" if pred == 0 else "anomaly" for pred in predictions]
 
-        # Determine labels (assuming cluster 0 = normal, 1 = anomaly — adjust if needed)
-        labels = ["normal" if p == 0 else "anomaly" for p in cluster_preds]
-
-        # Save or append to predictions.csv
+        # Save predictions
         if os.path.exists(output_csv):
-            pred_df = pd.read_csv(output_csv)
-            pred_df["bgmm"] = labels
-        else:
-            pred_df = pd.DataFrame({"bgmm": labels})
-        pred_df.to_csv(output_csv, index=False)
+            existing = pd.read_csv(output_csv)
+            new = pd.DataFrame(labels, columns=["bgmm"])
+            combined = pd.concat([existing, new], ignore_index=True)
+            combined.to_csv(output_csv, index=False)
 
-        # Print results summary
+        else:
+            df_with_preds = df.copy()
+            df_with_preds["bgmm"] = labels
+            df_with_preds.to_csv(output_csv, index=False)
+
+        # Print summary
         print("BGMM Prediction Summary:")
         print(f"Normal  : {labels.count('normal')}")
         print(f"Anomaly : {labels.count('anomaly')}")
@@ -286,6 +302,9 @@ def predict_with_bgmm(output_csv='predictions.csv'):
         print("Prediction failed due to error:", err)
         raise
 
+
+
+
 if __name__ == "__main__":
     check_and_predict_SVM()
     check_and_predict_LR()
@@ -293,4 +312,5 @@ if __name__ == "__main__":
     check_and_predict_RF()
     predict_knn()
     predict_with_bgmm()
+    
     

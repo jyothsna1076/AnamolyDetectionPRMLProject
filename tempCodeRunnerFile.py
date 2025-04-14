@@ -1,0 +1,5 @@
+check_and_predict_SVM()
+    # check_and_predict_LR()
+    # preprocess_and_predict_NV()
+    # check_and_predict_RF()
+    # predict_knn()
