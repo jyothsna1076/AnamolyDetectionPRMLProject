@@ -5,6 +5,7 @@ from sklearn.preprocessing import PolynomialFeatures
 import SVM_best_model
 import LogisticRegression
 from LogisticRegression import My_Logistic_Regression
+from my_models import MyGaussianNaiveBayes
 import os
 encoders = joblib.load('models/SVM_models/label_encoders.pkl')
 target_encoder = joblib.load('models/SVM_models/target_encoder.pkl')
@@ -107,6 +108,49 @@ def check_and_predict_LR(output_csv='predictions.csv'):
         print("❌ Error during prediction:", e)
         raise
 
+
+
+
+def preprocess_and_predict_NV(output_csv='predictions.csv'):
+    df = pd.read_csv('real_time_nids_features.csv')
+    
+    nb_model = joblib.load('models/Navie_bayes_Model/naive_bayes_model.pkl')
+    scaler = joblib.load('models/Navie_bayes_Model/scaler.pkl')
+    selected_features = joblib.load('models/Navie_bayes_Model/selected_features.pkl')
+    encoding_dict = joblib.load('models/Navie_bayes_Model/all_label_encoders.pkl')
+
+    # Apply safe label transform to handle unseen categories
+    for col, encoder in encoding_dict.items():
+        if col in df.columns:
+            df[col] = safe_label_transform(encoder, df[col].astype(str))
+        else:
+            print(f"[Warning] Column {col} missing from input data")
+
+    # Select and scale features
+    df = df[selected_features]
+    df_scaled = scaler.transform(df)
+
+    # Predict
+    predictions = nb_model.predict(df_scaled)
+
+    # Save to CSV
+    if os.path.exists(output_csv):
+        combined = pd.read_csv(output_csv)
+        combined["nv"] = predictions
+        combined.to_csv(output_csv, index=False)
+    else:
+        pd.DataFrame(predictions, columns=["nv"]).to_csv(output_csv, index=False)
+
+    # Summary
+    normal = np.sum(predictions == 0)
+    anomaly = np.sum(predictions == 1)
+    print("✅ Predictions complete from Naive Bayes")
+    print("Normal :", normal)
+    print("Anomaly:", anomaly)
+
+    return normal, anomaly
+
 if __name__ == "__main__":
     check_and_predict_SVM()
     check_and_predict_LR()
+    preprocess_and_predict_NV()
