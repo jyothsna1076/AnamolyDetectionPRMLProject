@@ -86,5 +86,5 @@ final_model = MyRandomForest(n_trees=best_trees, sample_ratio=best_sample, max_d
 final_model.fit(x_train, y_train)
 
 
-joblib.dump(final_model, 'random_forest.pkl')
+joblib.dump(final_model, "models/RF_models/random_forest.pkl")
 # print(f"Final Model Accuracy: {final_acc:.4f}")
