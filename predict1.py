@@ -292,3 +292,5 @@ if __name__ == "__main__":
     preprocess_and_predict_NV()
     check_and_predict_RF()
     predict_knn()
+    predict_with_bgmm()
+    
