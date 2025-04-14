@@ -93,7 +93,7 @@ def manual_check():
         result = subprocess.run(['python3', 'predict1.py', '--input', file_path], check=True)
 
         # Read prediction result from predictions.csv as before
-        with open('/Users/pradeepikanori/PRML_project/predictions.csv', 'r') as f:
+        with open('predictions.csv', 'r') as f:
             lines = f.readlines()[1:]
             predictions = [line.strip() for line in lines]
 
