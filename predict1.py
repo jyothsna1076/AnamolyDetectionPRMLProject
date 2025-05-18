@@ -268,7 +268,6 @@ def predict_knn(output_csv='predictions.csv'):
     # Append predictions to output_csv if lengths match
     if os.path.exists(output_csv):
         combined = pd.read_csv(output_csv)
-        combined = combined[valid_mask.values]
 
         if len(combined) == len(predicted_labels):
             combined["knn"] = predicted_labels

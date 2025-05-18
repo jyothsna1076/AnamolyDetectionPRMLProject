@@ -17,13 +17,13 @@ prediction_status = {
 def handle_capture_and_predict():
     try:
         print("[*] Running capture_script.py (requires sudo)...")
-        subprocess.run(['sudo', 'python3', 'capture_script.py'], check=True)
+        subprocess.run(['sudo', 'python', 'capture_script.py'], check=True)
 
         print("[*] Capture complete. Running prediction...")
-        subprocess.run(['python3', 'predict1.py'], check=True)
+        subprocess.run(['python', 'predict1.py'], check=True)
 
         print("[✓] Prediction complete. Reading predictions...")
-        with open('/Users/pradeepikanori/PRML_project/predictions.csv', 'r') as f:
+        with open('predictions.csv', 'r') as f:
             lines = f.readlines()[1:]
             predictions = [line.strip() for line in lines]
 
@@ -78,7 +78,12 @@ def get_predictions():
             prediction_status['status'] = 'idle'
             prediction_status['predictions'] = None
 
-            return jsonify({'status': 'done', 'output': summary_text})
+            return jsonify({
+                'status': 'done',
+                'output': summary_text,
+                'predictions': prediction_status['predictions']
+            })
+
         else:
             return jsonify({'status': 'done', 'output': 'No summary file found.'})
 
@@ -113,14 +118,13 @@ def manual_check():
             return jsonify({'error': 'No file uploaded'})
 
         filename = secure_filename(file.filename)
-        file_path = os.path.join('/tmp', filename)
-        file.save(file_path)
+        file.save(filename)
 
-        print(f"[*] Received file: {file_path}")
+        print(f"[*] Received file: {filename}")
 
         # Modify this part based on your actual processing logic
         # Assuming predict1.py can take a file argument for manual check:
-        result = subprocess.run(['python3', 'predict1.py', '--input', file_path], check=True)
+        subprocess.run(['python', 'predict1.py', '--input', filename], check=True)
 
         # Read prediction result from predictions.csv as before
         with open('predictions.csv', 'r') as f:

@@ -1,18 +1,18 @@
     === SVM Model Predicts ===
-Normal : 1240
+Normal : 2980
 Anomaly: 0
     === Logistic Regression Model Predicts ===
-Normal : 1235
-Anomaly: 5
+Normal : 2924
+Anomaly: 56
     === Naive Bayes Model Predicts ===
-Normal : 991
-Anomaly: 249
+Normal : 2689
+Anomaly: 291
     === Random Forest Model Predicts ===
-Normal : 769
-Anomaly: 471
+Normal : 1000
+Anomaly: 1980
     === kNN Model Predicts ===
-Normal : 1152
+Normal : 2866
 Anomaly: 1
     === Gaussian Mixture Model Predicts ===
-Normal : 1240
-Anomaly: 0
+Normal : 2330
+Anomaly: 650
