@@ -78,6 +78,7 @@ For Windows :
 # Create and activate virtual environment
 python -m venv venv
 venv\Scripts\activate
+pip install -r requirements.txt
 ```
 
 For Linux :
@@ -85,12 +86,9 @@ For Linux :
 # Create and activate virtual environment
 python3 -m venv venv
 source venv/bin/activate
-```
-
-```bash
-# Install required packages
 pip install -r requirements.txt
 ```
+
 
 3.🚀 Running the Application
 
