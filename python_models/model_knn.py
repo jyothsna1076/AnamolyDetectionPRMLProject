@@ -29,7 +29,7 @@ class CustomKNN:
         return predictions
 
 # 1. Load dataset
-df = pd.read_csv('train_data.csv')
+df = pd.read_csv('Train_data.csv')
 
 # 2. Convert 'class' column to numeric
 df['class'] = pd.to_numeric(df['class'].map({'normal': 0, 'anomaly': 1}), errors='coerce')
