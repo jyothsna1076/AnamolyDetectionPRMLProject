@@ -1,22 +1,22 @@
 import pandas as pd
 import numpy as np
 import joblib
-from sklearn.preprocessing import PolynomialFeatures, LabelEncoder
-import SVM_best_model
-import LogisticRegression
-from LogisticRegression import My_Logistic_Regression
-from my_models import MyGaussianNaiveBayes
 import os
-from randomforestprml import MyRandomForest
-from randomforestprml import MyRandomForest
+from sklearn.preprocessing import PolynomialFeatures, LabelEncoder
+from python_models.SVM_best_model import CustomSVM
+from python_models.LogisticRegression import My_Logistic_Regression
+from python_models.Model import MyGaussianNaiveBayes
+from python_models.randomforestprml import MyRandomForest
+from python_models.model_knn import CustomKNN
 from sklearn.preprocessing import LabelEncoder
 from collections import Counter
 import argparse
-encoders = joblib.load('models/SVM_models/label_encoders.pkl')
-target_encoder = joblib.load('models/SVM_models/target_encoder.pkl')
-scaler = joblib.load('models/SVM_models/scaler.pkl')
-model = joblib.load('models/SVM_models/SVM_best_model.pkl')
-feature_order = joblib.load('models/SVM_models/feature_order.pkl')
+
+encoders = joblib.load('python_models/models/SVM_models/label_encoders.pkl')
+target_encoder = joblib.load('python_models/models/SVM_models/target_encoder.pkl')
+scaler = joblib.load('python_models/models/SVM_models/scaler.pkl')
+model = joblib.load('python_models/models/SVM_models/SVM_best_model.pkl')
+feature_order = joblib.load('python_models/models/SVM_models/feature_order.pkl')
 
 def safe_label_transform(le, col_values):
     known_classes = set(le.classes_)
@@ -88,11 +88,11 @@ def check_and_predict_SVM(output_csv='predictions.csv'):
         return [f"Error: {str(e)}"]
 
 def check_and_predict_LR(output_csv='predictions.csv'):
-    clf = joblib.load("models/LR_models/classifier.pkl")
-    le_protocol = joblib.load("models/LR_models/le_protocol.pkl")
-    le_service = joblib.load("models/LR_models/le_service.pkl")
-    le_flag = joblib.load("models/LR_models/le_flag.pkl")
-    scaler = joblib.load("models/LR_models/scaler.pkl")
+    clf = joblib.load("python_models/models/LR_models/classifier.pkl")
+    le_protocol = joblib.load("python_models/models/LR_models/le_protocol.pkl")
+    le_service = joblib.load("python_models/models/LR_models/le_service.pkl")
+    le_flag = joblib.load("python_models/models/LR_models/le_flag.pkl")
+    scaler = joblib.load("python_models/models/LR_models/scaler.pkl")
 
     try:
         parser = argparse.ArgumentParser()
@@ -170,10 +170,10 @@ def preprocess_and_predict_NV(output_csv='predictions.csv'):
 
     df = pd.read_csv(input_file)
     
-    nb_model = joblib.load('models/Navie_bayes_Model/naive_bayes_model.pkl')
-    scaler = joblib.load('models/Navie_bayes_Model/scaler.pkl')
-    selected_features = joblib.load('models/Navie_bayes_Model/selected_features.pkl')
-    encoding_dict = joblib.load('models/Navie_bayes_Model/all_label_encoders.pkl')
+    nb_model = joblib.load('python_models/models/Navie_bayes_Model/naive_bayes_model.pkl')
+    scaler = joblib.load('python_models/models/Navie_bayes_Model/scaler.pkl')
+    selected_features = joblib.load('python_models/models/Navie_bayes_Model/selected_features.pkl')
+    encoding_dict = joblib.load('python_models/models/Navie_bayes_Model/all_label_encoders.pkl')
 
     # Apply safe label transform to handle unseen categories
     for col, encoder in encoding_dict.items():
@@ -217,6 +217,7 @@ def preprocess_and_predict_NV(output_csv='predictions.csv'):
                 f.write(line + "\n")
 
     return normal, anomaly
+
 def predict_knn(output_csv='predictions.csv'):
     parser = argparse.ArgumentParser()
     parser.add_argument('--input', help='Path to input CSV file')
@@ -245,20 +246,20 @@ def predict_knn(output_csv='predictions.csv'):
 
     # Encode and mark invalid rows
     for col in cat_cols:
-        le = load_or_fit_encoder(f"{col}_le.pkl", col)
+        le = load_or_fit_encoder(f"python_models/models/Knn_model/{col}_le.pkl", col)
         real_data[col] = safe_label_transform(le, real_data[col])
 
     # Keep mask of valid rows (to also filter predictions.csv if needed)
     valid_mask = (real_data[cat_cols] != -1).all(axis=1)
     real_data = real_data[valid_mask]
 
-    scaler = joblib.load("models/Knn_model/scaler.pkl")
-    selected_indices = joblib.load("models/Knn_model/selected_feature_indices.pkl")
+    scaler = joblib.load("python_models/models/Knn_model/scaler.pkl")
+    selected_indices = joblib.load("python_models/models/Knn_model/selected_feature_indices.pkl")
 
     real_data_scaled = scaler.transform(real_data.values)
     real_data_selected = real_data_scaled[:, selected_indices]
 
-    knn_model = joblib.load("models/Knn_model/knn_model.pkl")
+    knn_model = joblib.load("python_models/models/Knn_model/knn_model.pkl")
     predictions = knn_model.predict(real_data_selected)
 
     # ✅ Convert numeric predictions to labels
@@ -301,7 +302,7 @@ def predict_knn(output_csv='predictions.csv'):
                 f.write(line + "\n")
 
 def check_and_predict_RF(output_csv='predictions.csv'):
-    model = joblib.load('models/RF_models/random_forest.pkl')  
+    model = joblib.load('python_models/models/RF_models/random_forest.pkl')  
 
     # Load unlabeled data
     parser = argparse.ArgumentParser()
@@ -350,15 +351,17 @@ def check_and_predict_RF(output_csv='predictions.csv'):
         print("Final Say: 🚨 Anomaly Detected")
     else:
         print("Final Say: ✅ Normal Behavior")
+
+
 def predict_with_bgmm(output_csv='predictions.csv'):
     # Load trained model and preprocessing tools
-    bgmm = joblib.load("models/BGMM_model/bgmm_model.pkl")
-    scaler = joblib.load("models/BGMM_model/scaler.pkl")
-    threshold = joblib.load("models/BGMM_model/threshold.pkl")
-    le_protocol = joblib.load("models/BGMM_model/le_protocol_type.pkl")
-    le_service = joblib.load("models/BGMM_model/le_service.pkl")
-    le_flag = joblib.load("models/BGMM_model/le_flag.pkl")
-    feature_order = joblib.load("models/BGMM_model/feature_order.pkl")
+    bgmm = joblib.load("python_models/models/BGMM_model/bgmm_model.pkl")
+    scaler = joblib.load("python_models/models/BGMM_model/scaler.pkl")
+    threshold = joblib.load("python_models/models/BGMM_model/threshold.pkl")
+    le_protocol = joblib.load("python_models/models/BGMM_model/le_protocol_type.pkl")
+    le_service = joblib.load("python_models/models/BGMM_model/le_service.pkl")
+    le_flag = joblib.load("python_models/models/BGMM_model/le_flag.pkl")
+    feature_order = joblib.load("python_models/models/BGMM_model/feature_order.pkl")
 
     def safe_label_transform(label_encoder, values):
         known_classes = set(label_encoder.classes_)

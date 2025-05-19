@@ -1,8 +1,8 @@
 from flask import Flask, render_template, request, jsonify
 import subprocess
 import threading
-import time
 import os
+import sys
 from werkzeug.utils import secure_filename
 
 
@@ -17,10 +17,10 @@ prediction_status = {
 def handle_capture_and_predict():
     try:
         print("[*] Running capture_script.py (requires sudo)...")
-        subprocess.run(['sudo', 'python', 'capture_script.py'], check=True)
+        subprocess.run(['sudo', sys.executable, 'capture_script.py'], check=True)
 
         print("[*] Capture complete. Running prediction...")
-        subprocess.run(['python', 'predict1.py'], check=True)
+        subprocess.run([sys.executable, 'predict1.py'], check=True)
 
         print("[✓] Prediction complete. Reading predictions...")
         with open('predictions.csv', 'r') as f:
