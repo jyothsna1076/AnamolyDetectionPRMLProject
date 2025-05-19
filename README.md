@@ -67,39 +67,42 @@ Enable Developer Mode and Sudo Mode
 2.📦 Environment Setup
 Create a virtual environment and install dependencies:
 
-# Clone the repository
 ```bash
+# Clone the repository
 git clone https://github.com/jyothsna1076/AnamolyDetectionPRMLProject.git
 cd AnamolyDetectionPRMLProject
 ```
 
-# Create and activate virtual environment
 For Windows :
 ```bash
+# Create and activate virtual environment
 python -m venv venv
 venv\Scripts\activate
 ```
+
 For Linux :
 ```bash
+# Create and activate virtual environment
 python3 -m venv venv
 source venv/bin/activate
 ```
 
-# Install required packages
 ```bash
+# Install required packages
 pip install -r requirements.txt
 ```
 
 3.🚀 Running the Application
 
-# Run the app
 For Windows :
 ```bash
+# Run the app
 python app.py
 ```
 
 For Linux :
 ```bash
+# Run the app(sudo mode is required)
 sudo python3 app.py
 ```
 
