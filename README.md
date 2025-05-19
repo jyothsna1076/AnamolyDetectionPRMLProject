@@ -47,15 +47,85 @@ Our goal: **Build an accurate, robust, and scalable Intrusion Detection System (
 
 ---
 
-## 🛠️ Setup Instructions
 
+🛠️ Setup & Usage Instructions (Windows)
+
+
+1.✅ Prerequisites
+Python 3.7+ must be installed.
+
+For Windows, ensure:
+
+Npcap is installed.
+
+Sudo Mode and Developer Mode are enabled:
+
+Go to Settings → System → For Developers
+
+Enable Developer Mode and Sudo Mode
+
+2.📦 Environment Setup
+Create a virtual environment and install dependencies:
+
+# Clone the repository
 ```bash
 git clone https://github.com/jyothsna1076/AnamolyDetectionPRMLProject.git
 cd AnamolyDetectionPRMLProject
+```
+
+# Create and activate virtual environment
+For Windows :
+```bash
+python -m venv venv
+venv\Scripts\activate
+```
+For Linux :
+```bash
+python3 -m venv venv
+source venv/bin/activate
+```
+
+# Install required packages
+```bash
 pip install -r requirements.txt
 ```
 
-> 📌 Note: Ensure Python 3.7+ is installed.
+3.🚀 Running the Application
+
+# Run the app
+For Windows :
+```bash
+python app.py
+```
+
+For Linux :
+```bash
+sudo python3 app.py
+```
+
+- Open your browser and go to: http://127.0.0.1:5000/
+- The web interface will load.
+
+4. 🌐 Using the Web Interface
+   
+Option A: 📡 Real-Time Traffic Capture
+Click the "Capture Real Traffic" button on the webpage.
+
+Wait approximately 1-1.5 minute for real-time anomaly detection results to appear.
+
+Option B: 📁 Upload CSV Test Data
+Upload the file Test_data.csv provided in the repository.
+
+This file contains a large dataset — please wait up to 5 minutes for results to process.
+
+⚠️ Do not modify any backend files (Python, HTML, etc.) while the app is running in the browser — doing so may interrupt processing.
+
+📎 Notes
+For Windows: Make sure Npcap is installed before running the app.
+
+Ensure all developer settings are correctly enabled if you're using Windows.
+
+The app uses live network traffic, so admin/sudo privileges are necessary.
 
 ---
 
@@ -63,19 +133,31 @@ pip install -r requirements.txt
 
 ```bash
 AnamolyDetectionPRMLProject/
-├── data/                   # Dataset files
-├── notebooks/              # Jupyter notebooks per model
-│   ├── logistic_regression.ipynb
-│   ├── svm_model.ipynb
-│   ├── random_forest.ipynb
+├── jupyter_files/              
+│   ├── BGMM_model.ipynb
+│   ├── gaussian_naive_bayes.ipynb
+│   ├── NIDS_regression.ipynb
 │   ├── knn_model.ipynb
 │   ├── gmm_model.ipynb
-│   └── naive_bayes.ipynb
-├── preprocessing.py        # Data preprocessing pipeline
-├── utils.py                # Helper functions
-├── results/                # Graphs, reports
-├── README.md               # Project overview
-└── requirements.txt        # Package dependencies
+│   ├── naive_bayes.ipynb
+├── MidProjectReport
+|   ├── MidSemReportPRML.pdf
+|   ├── prml_mid_project.ipynb     
+├── python_models
+|   ├── BGMM_model.py
+|   ├── LogisticRegression.py
+|   ├── model_knn.py
+|   ├── Model.py
+|   ├── randomforestprml.py
+|   ├── SVM_best_model.py      
+├── app.py
+├── capture_script.py
+├── index.html
+├── predict1.py                
+├── README.md
+└── requirements.txt
+├── Train_data.csv
+├── Test_data.csv
 ```
 
 ---
