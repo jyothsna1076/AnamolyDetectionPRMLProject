@@ -1,4 +1,4 @@
-# Anamolyse
+# ANOMALISE
 # 🚨 Network Anomaly Detection using Machine Learning
 
 A Comparative Study of Supervised and Unsupervised Models for Intrusion Detection  
